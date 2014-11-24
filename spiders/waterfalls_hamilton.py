@@ -23,21 +23,32 @@ class WaterfallsHamiltonSpider(CrawlSpider):
 
     Rule(
         LinkExtractor(
-            allow=('default.asp?waterfall=(\w+)',)),
+            allow=('waterfall=(\d+)',)),
             callback='parse_item'),
     )
 
     def _get_words(self, raw, regexp):
-        return Selector(
-                body=raw[0]
-            ).xpath('//text()').re(regexp)
+        try:
+            return Selector(
+                    text=raw[0]
+                ).xpath('//text()').re(regexp)
+        except IndexError:
+            self.log('could not get words from: {0}'.format(str(raw)))
 
     def _get_latlng(self, raw):
         res = self._get_words(raw, '([\w|\.]+)')
-        return (res[0], res[2],)
-
+        try:
+            return (res[0], res[2],)
+        except:
+            return (None, None)
     def _get_type(self, raw):
         return ' '.join(self._get_words(raw, '(\w+)'))
+
+    def _get_access(self, raw):
+        try:
+            return self._get_words(raw, '\w+')[1]
+        except IndexError:
+            return self._get_words(raw, '\w+')[0]
 
     def parse_item(self, response):
         self.log('waterfall found: %s ' % response.url)
@@ -49,7 +60,7 @@ class WaterfallsHamiltonSpider(CrawlSpider):
         classification = self._get_type(span3.re('Classification:(.*)'))
 
         ownership = self._get_type(outer.re("Ownership(.*)"))
-        accessibility  = self._get_access(outer.re('Accessibility -(\w+)'))
+        accessibility  = self._get_access(outer.re('Accessibility -(.*)'))
         #output
         waterfall = WaterfallItem()
 
@@ -60,4 +71,4 @@ class WaterfallsHamiltonSpider(CrawlSpider):
         waterfall['height'] , waterfall['width']  = height, width
         waterfall['ownership'] = ownership # (public/priate)
         waterfall['accessibility'] = accessibility
-
+        return waterfall
