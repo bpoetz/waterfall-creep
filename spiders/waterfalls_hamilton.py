@@ -7,9 +7,6 @@ from scrapy.contrib.linkextractors import LinkExtractor
 from scrapy.selector import Selector
 
 
-
-
-
 class WaterfallsHamiltonSpider(CrawlSpider):
     name = "waterfalls_hamilton"
     allowed_domains = ["waterfalls.hamilton.ca"]
@@ -20,13 +17,15 @@ class WaterfallsHamiltonSpider(CrawlSpider):
 
     )
     rules = (
-
-    Rule(
-        LinkExtractor(
-            allow=('waterfall=(\d+)',)),
-            callback='parse_item'),
+        Rule(
+            LinkExtractor(
+                allow=('waterfall=(\d+)',)),
+                callback='parse_item'
+            ),
     )
-
+    #some helper functions
+    #wraps string returned from a regex in a selector and then strips html tags and applies a final regex
+    #lazy way to ignore all the html entities that are in the waterfall template
     def _get_words(self, raw, regexp):
         try:
             return Selector(
@@ -41,6 +40,7 @@ class WaterfallsHamiltonSpider(CrawlSpider):
             return (res[0], res[2],)
         except:
             return (None, None)
+            
     def _get_type(self, raw):
         return ' '.join(self._get_words(raw, '(\w+)'))
 
@@ -58,13 +58,12 @@ class WaterfallsHamiltonSpider(CrawlSpider):
         height, width = span3.re('(\d+)\xa0metres')
         lat, lng = self._get_latlng(span3.re('Coordinates:(.*)'))
         classification = self._get_type(span3.re('Classification:(.*)'))
-
         ownership = self._get_type(outer.re("Ownership(.*)"))
         accessibility  = self._get_access(outer.re('Accessibility -(.*)'))
-        #output
+        
         waterfall = WaterfallItem()
 
-        waterfall['name'] =  outer.xpath('.//div[@class="span5"]/h3/text()').extract()
+        waterfall['name'] =  outer.xpath('.//div[@class="span5"]/h3/text()').extract()[0]
         waterfall['lat'] = lat
         waterfall['lng'] = lng
         waterfall['classification_type'] = classification
